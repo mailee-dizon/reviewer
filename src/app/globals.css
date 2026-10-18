@@ -1,0 +1,47 @@
+/* Fonts from our Figma prototype. This import must come before Tailwind. */
+@import url("https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600&family=DM+Serif+Display&display=swap");
+@import "tailwindcss";
+
+/*
+  Our design colors and fonts, copied from the Figma prototype.
+  Each "--color-xyz" below becomes a Tailwind class, for example:
+    --color-navy      ->  text-navy, bg-navy, border-navy
+    --color-lavender  ->  bg-lavender
+  and "--font-serif" becomes the "font-serif" class.
+*/
+@theme {
+  --color-cream: #f7f4ed; /* main page background */
+  --color-paper: #fcfaf5; /* slightly lighter background */
+  --color-navy: #17233d; /* main text and dark buttons */
+  --color-navy-soft: #465068; /* secondary text */
+  --color-navy-hover: #273652; /* dark button hover */
+  --color-lavender: #dad9f1; /* active nav link, image placeholder */
+  --color-lavender-soft: #eeecf8; /* light hover background */
+  --color-periwinkle: #7776a9; /* accent text and links */
+  --color-line: #dedbd3; /* thin divider lines */
+  --color-muted: #777b87; /* small gray text like years */
+  --color-star: #b47746; /* star rating color */
+
+  --font-sans: "DM Sans", sans-serif;
+  --font-serif: "DM Serif Display", serif;
+}
+
+body {
+  background: var(--color-cream);
+  color: var(--color-navy);
+  font-family: var(--font-sans);
+}
+
+/* All headings use the serif font, like the Figma design. */
+h1,
+h2,
+h3 {
+  font-family: var(--font-serif);
+  font-weight: 400;
+}
+
+/* Thin lavender scrollbar for the sideways-scrolling card rows. */
+.card-row {
+  scrollbar-width: thin;
+  scrollbar-color: var(--color-lavender) transparent;
+}
