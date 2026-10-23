@@ -5,10 +5,9 @@ import { notFound } from "next/navigation";
 import { ArrowLeftIcon, StarIcon } from "@/components/Icons";
 import ReviewsSection from "@/components/ReviewsSection";
 import SaveToLibraryButton from "@/components/SaveToLibraryButton";
-import { categoryInfo, getItemBySlug, items } from "@/data/entertainment";
-import { movieIds } from "@/lib/omdb";
+import { categoryInfo, getItemBySlug } from "@/data/entertainment";
 
-// The detail page for one item, e.g. /item/blue-hours.
+// The detail page for one item, e.g. /item/movie-693134 (Dune: Part Two).
 // The folder name [slug] means this one file handles every item:
 // whatever is in the address after /item/ is passed in as "slug".
 
@@ -17,12 +16,8 @@ type DetailPageProps = {
   params: Promise<{ slug: string }>;
 };
 
-// Tells Next.js the slugs we know about, so those detail pages can be built ahead of time.
-// Other movies still work: visiting /item/<any IMDb ID> loads that movie from OMDb.
-export function generateStaticParams() {
-  const movieSlugs = movieIds.map((id) => ({ slug: id }));
-  return [...items.map((item) => ({ slug: item.slug })), ...movieSlugs];
-}
+// Every item comes from a trending list that changes over time, so detail pages aren't
+// built ahead of time. Each one is built the first time someone visits it.
 
 // Sets the browser tab title to the item's name.
 export async function generateMetadata({ params }: DetailPageProps): Promise<Metadata> {
@@ -74,14 +69,17 @@ export default async function DetailPage({ params }: DetailPageProps) {
             {item.title}
           </h1>
           <div className="mb-8 flex items-center gap-2.5 text-[17px] text-navy-soft">
-            <span>{item.year}</span>
-            <span>·</span>
-            <span className="flex items-center gap-1">
-              <span className="text-star">
-                <StarIcon size={18} />
+            {/* Year and rating are hidden when unknown (0), e.g. books have no ratings. */}
+            {item.year > 0 && <span>{item.year}</span>}
+            {item.year > 0 && item.rating > 0 && <span>·</span>}
+            {item.rating > 0 && (
+              <span className="flex items-center gap-1">
+                <span className="text-star">
+                  <StarIcon size={18} />
+                </span>
+                {item.rating} average
               </span>
-              {item.rating} average
-            </span>
+            )}
           </div>
           {item.description && (
             <p className="mb-9 max-w-[640px] font-serif text-[clamp(21px,2.4vw,29px)] leading-[1.4] text-navy-soft">
@@ -89,7 +87,7 @@ export default async function DetailPage({ params }: DetailPageProps) {
             </p>
           )}
 
-          <SaveToLibraryButton slug={item.slug} />
+          <SaveToLibraryButton item={item} />
 
           {item.about && (
             <div className="mt-10 max-w-[640px] border-t border-line pt-7">

@@ -8,6 +8,7 @@ import { usePathname } from "next/navigation";
 import { supabase, useUser } from "@/lib/supabase";
 
 // The links shown in the navigation bar, in order.
+// "signedInOnly" links are hidden from visitors who aren't signed in.
 const navLinks = [
   { label: "Home", href: "/" },
   { label: "Search", href: "/search" },
@@ -15,10 +16,13 @@ const navLinks = [
   { label: "Movies", href: "/movies" },
   { label: "Shows", href: "/shows" },
   { label: "Games", href: "/games" },
+  { label: "Saved", href: "/saved", signedInOnly: true },
 ];
 
 export default function Navbar() {
   const pathname = usePathname();
+  const { user } = useUser();
+  const shownLinks = navLinks.filter((link) => !link.signedInOnly || user);
 
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-cream/95 backdrop-blur-md">
@@ -30,7 +34,7 @@ export default function Navbar() {
         </Link>
 
         <nav aria-label="Primary navigation" className="order-last flex w-full gap-1 overflow-x-auto md:order-none md:w-auto">
-          {navLinks.map((link) => {
+          {shownLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
               <Link

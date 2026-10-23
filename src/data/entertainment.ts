@@ -1,25 +1,38 @@
 // Data for the website.
-// Movies are real and come from the OMDb API (see src/lib/omdb.ts).
-// There is no database yet, so the sample shows, books, and games live here.
-// Their titles, years, ratings, and images match our Figma prototype.
+// Everything is real and loaded from APIs:
+//   Movies and TV shows are trending on TMDB this week (see src/lib/tmdb.ts).
+//   Books are a hand-picked list from Google Books, highest rated first (see src/lib/googleBooks.ts).
+//   Video games are what IGDB users are playing right now (see src/lib/igdb.ts).
 
-import { getFeaturedMovies, getMovie, isImdbId } from "@/lib/omdb";
+import { getAllBooks, getBook, getFeaturedBooks, isBookSlug, searchBooks } from "@/lib/googleBooks";
+import { getAllGames, getFeaturedGames, getGame, isGameSlug, searchGames } from "@/lib/igdb";
+import {
+  getAllMovies,
+  getAllShows,
+  getFeaturedMovies,
+  getFeaturedShows,
+  getTmdbTitle,
+  isTmdbSlug,
+  searchMovies,
+  searchShows,
+} from "@/lib/tmdb";
 
 // The four kinds of entertainment REWIND tracks.
 export type Category = "movie" | "show" | "book" | "game";
 
 // One entertainment item (a movie, show, book, or game).
 export type EntertainmentItem = {
-  slug: string; // used in the web address, e.g. /item/blue-hours (movies use their IMDb ID)
+  slug: string; // used in the web address, e.g. /item/movie-693134, /item/show-1396, /item/book--Ff2DwAAQBAJ, /item/game-elden-ring
   title: string;
-  year: number;
+  year: number; // 0 if unknown
   category: Category;
-  rating: number; // average rating out of 5
+  rating: number; // average rating out of 5 (0 if unrated)
   image: string;
   description: string;
-  genre?: string; // e.g. "Sci-Fi" (only movies have this for now)
-  creator?: string; // director, author, studio, etc. (only movies have this for now)
-  about?: string; // extra details, e.g. director and cast (only movies have this for now)
+  genre?: string; // the main genre, shown on the detail page, e.g. "Science Fiction"
+  genres: string[]; // every genre and theme we know of, used by the Search page's filters
+  creator?: string; // director, author, studio, etc.
+  about?: string; // extra details, e.g. director and cast
 };
 
 // Display information for each category.
@@ -40,153 +53,50 @@ export const categoryInfo: Record<
 // The order the categories appear on the Home page.
 export const homeCategories: Category[] = ["movie", "show", "book", "game"];
 
-// Builds an Unsplash image link from a photo ID, so the list below stays short.
-function unsplash(photoId: string): string {
-  return `https://images.unsplash.com/photo-${photoId}?auto=format&fit=crop&w=700&q=85`;
-}
-
-export const items: EntertainmentItem[] = [
-  // ----- TV Shows -----
-  {
-    slug: "blue-hours",
-    title: "Blue Hours",
-    year: 2023,
-    category: "show",
-    rating: 4.9,
-    image: unsplash("1677665393079-4a7a81ab25e8"),
-    description:
-      "Six lives intersect over six nights in a city that feels most alive just before dawn.",
-  },
-  {
-    slug: "radio-city",
-    title: "Radio City",
-    year: 2022,
-    category: "show",
-    rating: 4.4,
-    image: unsplash("1643106217254-7b0ea36ab111"),
-    description:
-      "A warm ensemble comedy about the idealists keeping a small late-night radio station on air.",
-  },
-  {
-    slug: "the-quiet-case",
-    title: "The Quiet Case",
-    year: 2024,
-    category: "show",
-    rating: 4.7,
-    image: unsplash("1630504082468-6ddf36acecfb"),
-    description:
-      "An observant archivist notices the one detail every detective in the city has overlooked.",
-  },
-  {
-    slug: "someone-elses-summer",
-    title: "Someone Else's Summer",
-    year: 2021,
-    category: "show",
-    rating: 4.2,
-    image: unsplash("1559199497-1255921114cf"),
-    description:
-      "A wistful story of missed chances, borrowed homes, and the summer that changed everything.",
-  },
-
-  // ----- Books -----
-  {
-    slug: "the-moss-library",
-    title: "The Moss Library",
-    year: 2024,
-    category: "book",
-    rating: 4.8,
-    image: unsplash("1569402928543-87a35efc0606"),
-    description:
-      "A hidden library grows a new room for every story forgotten by the outside world.",
-  },
-  {
-    slug: "a-field-guide-to-fog",
-    title: "A Field Guide to Fog",
-    year: 2023,
-    category: "book",
-    rating: 4.5,
-    image: unsplash("1655769211458-0016edcb4508"),
-    description:
-      "Part mystery, part meditation: a naturalist searches a fogbound village for her vanished mentor.",
-  },
-  {
-    slug: "where-trees-remember",
-    title: "Where Trees Remember",
-    year: 2022,
-    category: "book",
-    rating: 4.7,
-    image: unsplash("1695890384429-0232035bcf42"),
-    description:
-      "A lyrical fable about an ancient forest that keeps the memories people can no longer bear.",
-  },
-  {
-    slug: "the-green-hours",
-    title: "The Green Hours",
-    year: 2020,
-    category: "book",
-    rating: 4.3,
-    image: unsplash("1628626131386-afa54333bc87"),
-    description:
-      "A rediscovered classic tracing one household through a single, transformative day.",
-  },
-
-  // ----- Video Games -----
-  {
-    slug: "everdell-beyond",
-    title: "Everdell Beyond",
-    year: 2024,
-    category: "game",
-    rating: 4.9,
-    image: unsplash("1731937817165-1fed94fc03b2"),
-    description:
-      "Explore a painterly open world where every choice changes the songs people sing about you.",
-  },
-  {
-    slug: "crown-of-mist",
-    title: "Crown of Mist",
-    year: 2023,
-    category: "game",
-    rating: 4.6,
-    image: unsplash("1763198216883-7473e2c7eabb"),
-    description:
-      "Climb through a ruined kingdom and uncover the lost language hidden in its monuments.",
-  },
-  {
-    slug: "stillwood",
-    title: "Stillwood",
-    year: 2022,
-    category: "game",
-    rating: 4.5,
-    image: unsplash("1615021115776-b446ea7b90b7"),
-    description:
-      "A gentle puzzle mystery where the landscape shifts each time you look away.",
-  },
-  {
-    slug: "river-kingdoms",
-    title: "River Kingdoms",
-    year: 2021,
-    category: "game",
-    rating: 4.4,
-    image: unsplash("1711319551836-f7ca9764a898"),
-    description:
-      "Build, negotiate, and explore in a hand-painted world shaped by the rivers between nations.",
-  },
-];
-
 // Returns every item in one category, e.g. await getItemsByCategory("book").
-// Movies are loaded from OMDb, so this is async and must be awaited.
+// Items are loaded from APIs, so this is async and must be awaited.
 export async function getItemsByCategory(category: Category): Promise<EntertainmentItem[]> {
-  if (category === "movie") {
-    return getFeaturedMovies();
+  switch (category) {
+    case "movie":
+      return getFeaturedMovies();
+    case "show":
+      return getFeaturedShows();
+    case "book":
+      return getFeaturedBooks();
+    case "game":
+      return getFeaturedGames();
   }
-  return items.filter((item) => item.category === category);
 }
 
 // Finds one item by its slug. Returns undefined if no item matches.
-// A slug like "tt15239678" is an IMDb ID, so that movie is loaded from OMDb.
+// The start of the slug says where to load it from: "movie-" and "show-" from TMDB,
+// "book-" from Google Books, and "game-" from IGDB.
 export async function getItemBySlug(slug: string): Promise<EntertainmentItem | undefined> {
-  if (isImdbId(slug)) {
-    return getMovie(slug);
+  if (isTmdbSlug(slug)) {
+    return getTmdbTitle(slug);
   }
-  return items.find((item) => item.slug === slug);
+  if (isBookSlug(slug)) {
+    return getBook(slug);
+  }
+  if (isGameSlug(slug)) {
+    return getGame(slug);
+  }
+  return undefined;
+}
+
+// Every item from every category's full list, for browsing on the Search page.
+export async function getAllItems(): Promise<EntertainmentItem[]> {
+  const lists = await Promise.all([getAllMovies(), getAllShows(), getAllBooks(), getAllGames()]);
+  return lists.flat();
+}
+
+// Searches every category at once, e.g. await searchItems("dune").
+export async function searchItems(query: string): Promise<EntertainmentItem[]> {
+  const lists = await Promise.all([
+    searchMovies(query),
+    searchShows(query),
+    searchBooks(query),
+    searchGames(query),
+  ]);
+  return lists.flat();
 }

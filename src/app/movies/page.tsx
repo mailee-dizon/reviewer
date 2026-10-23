@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import EntertainmentCard from "@/components/EntertainmentCard";
-import { getAllMovies } from "@/lib/omdb";
+import { getAllMovies } from "@/lib/tmdb";
 
 export const metadata: Metadata = { title: "Movies" };
 
-// The Movies page ("/movies"): every movie in our list, loaded from OMDb.
+// The Movies page ("/movies"): the movies trending on TMDB this week.
 export default async function MoviesPage() {
   const movies = await getAllMovies();
 

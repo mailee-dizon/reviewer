@@ -1,13 +1,15 @@
 import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
-  // Lets the Next.js <Image> component load the sample cover photos,
-  // which are hosted on Unsplash (the same images used in our Figma prototype),
-  // and the real movie posters from OMDb, which are hosted on Amazon.
+  // Lets the Next.js <Image> component load the cover images: movie and show posters
+  // from TMDB, book covers from Google Books, game covers from IGDB, and fallback
+  // photos from Unsplash for items without a cover.
   images: {
     remotePatterns: [
       { protocol: "https", hostname: "images.unsplash.com" },
-      { protocol: "https", hostname: "m.media-amazon.com" },
+      { protocol: "https", hostname: "image.tmdb.org" },
+      { protocol: "https", hostname: "books.google.com" },
+      { protocol: "https", hostname: "images.igdb.com" },
     ],
   },
 
