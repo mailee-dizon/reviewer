@@ -4,8 +4,22 @@
 //   Books are a hand-picked list from Google Books, highest rated first (see src/lib/googleBooks.ts).
 //   Video games are what IGDB users are playing right now (see src/lib/igdb.ts).
 
-import { getAllBooks, getBook, getFeaturedBooks, isBookSlug, searchBooks } from "@/lib/googleBooks";
-import { getAllGames, getFeaturedGames, getGame, isGameSlug, searchGames } from "@/lib/igdb";
+import {
+  getAllBooks,
+  getBook,
+  getFeaturedBooks,
+  isBookSlug,
+  searchBooks,
+  searchBooksByAuthor,
+} from "@/lib/googleBooks";
+import {
+  getAllGames,
+  getFeaturedGames,
+  getGame,
+  isGameSlug,
+  searchGames,
+  searchGamesByCompany,
+} from "@/lib/igdb";
 import {
   getAllMovies,
   getAllShows,
@@ -13,6 +27,7 @@ import {
   getFeaturedShows,
   getTmdbTitle,
   isTmdbSlug,
+  searchByCreator,
   searchMovies,
   searchShows,
 } from "@/lib/tmdb";
@@ -99,4 +114,15 @@ export async function searchItems(query: string): Promise<EntertainmentItem[]> {
     searchGames(query),
   ]);
   return lists.flat();
+}
+
+// Searches every category for things made by someone, e.g. await searchItemsByCreator("nolan"):
+// books by an author, movies by a director, shows by their creator, and games by a studio.
+export async function searchItemsByCreator(query: string): Promise<EntertainmentItem[]> {
+  const [screen, books, games] = await Promise.all([
+    searchByCreator(query),
+    searchBooksByAuthor(query),
+    searchGamesByCompany(query),
+  ]);
+  return [...screen.movies, ...screen.shows, ...books, ...games];
 }

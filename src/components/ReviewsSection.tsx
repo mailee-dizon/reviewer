@@ -4,6 +4,7 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import FilterChip from "@/components/FilterChip";
 import { ArrowUpIcon, CheckIcon, LockIcon, StarIcon } from "@/components/Icons";
 import type { EntertainmentItem } from "@/data/entertainment";
 import {
@@ -210,31 +211,6 @@ export default function ReviewsSection({ item, noun }: ReviewsSectionProps) {
 }
 
 // ----- Smaller pieces used above -----
-
-type FilterChipProps = {
-  active: boolean;
-  onClick: () => void;
-  label?: string; // read aloud by screen readers instead of the visible text
-  children: React.ReactNode;
-};
-
-function FilterChip({ active, onClick, label, children }: FilterChipProps) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      aria-pressed={active}
-      aria-label={label}
-      className={`flex items-center gap-1.5 rounded-full border px-4 py-2.5 text-sm transition ${
-        active
-          ? "border-periwinkle bg-lavender text-navy"
-          : "border-line text-navy-soft hover:bg-lavender-soft"
-      }`}
-    >
-      {children}
-    </button>
-  );
-}
 
 // A row of 5 stars with the first "rating" of them filled in.
 function Stars({ rating }: { rating: number }) {

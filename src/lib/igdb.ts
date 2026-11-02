@@ -205,6 +205,40 @@ export async function searchGames(query: string): Promise<EntertainmentItem[]> {
   return (games ?? []).map(toItem);
 }
 
+// Finds the games made or published by the company whose name matches, e.g. "nintendo"
+// or "fromsoftware", best-known first. Adult games are left out.
+export async function searchGamesByCompany(query: string): Promise<EntertainmentItem[]> {
+  const text = query.replace(/"/g, "");
+
+  // An exact name match (ignoring capitals) is best, e.g. "Nintendo" rather than
+  // "Nintendo SPD". If there isn't one, use the companies whose names contain the words
+  // and that made the most games, e.g. "Ubisoft Entertainment" and "Ubisoft Montreal".
+  let companyIds = (await askIgdb<{ id: number }>("companies", `fields id; where name ~ "${text}"; limit 5;`))?.map(
+    (company) => company.id,
+  );
+  if (!companyIds || companyIds.length === 0) {
+    const similar = await askIgdb<{ id: number; developed?: number[]; published?: number[] }>(
+      "companies",
+      `fields id, developed, published; where name ~ *"${text}"*; limit 50;`,
+    );
+    const gameCount = (company: { developed?: number[]; published?: number[] }) =>
+      (company.developed?.length ?? 0) + (company.published?.length ?? 0);
+    companyIds = (similar ?? [])
+      .filter((company) => gameCount(company) > 0)
+      .sort((a, b) => gameCount(b) - gameCount(a))
+      .slice(0, 3)
+      .map((company) => company.id);
+  }
+  if (companyIds.length === 0) return [];
+
+  // "game_type = 0" means full games, not DLC or bundles. Sorted by how many people rated them.
+  const games = await askIgdb<IgdbGame>(
+    "games",
+    `fields ${fields}; where involved_companies.company = (${companyIds.join(",")}) & themes != (${eroticThemeId}) & game_type = 0; sort total_rating_count desc; limit 30;`,
+  );
+  return (games ?? []).map(toItem);
+}
+
 // The trending games shown in the Home page row.
 export async function getFeaturedGames(): Promise<EntertainmentItem[]> {
   return getTrendingGames(featuredCount);

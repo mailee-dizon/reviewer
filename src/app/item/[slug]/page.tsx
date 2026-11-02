@@ -2,6 +2,8 @@ import type { Metadata } from "next";
 import Image from "next/image";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { Suspense } from "react";
+import BookEditions from "@/components/BookEditions";
 import { ArrowLeftIcon, StarIcon } from "@/components/Icons";
 import ReviewsSection from "@/components/ReviewsSection";
 import SaveToLibraryButton from "@/components/SaveToLibraryButton";
@@ -99,6 +101,13 @@ export default async function DetailPage({ params }: DetailPageProps) {
           )}
         </div>
       </div>
+
+      {/* Books list their other editions. Suspense shows the rest of the page while they load. */}
+      {item.category === "book" && (
+        <Suspense fallback={<p className="mt-24 text-[15px] text-muted">Loading editions…</p>}>
+          <BookEditions slug={item.slug} />
+        </Suspense>
+      )}
 
       <ReviewsSection item={item} noun={info.tag.toLowerCase()} />
     </main>

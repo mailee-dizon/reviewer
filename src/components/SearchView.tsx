@@ -6,6 +6,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useTransition } from "react";
 import EntertainmentCard from "@/components/EntertainmentCard";
+import FilterChip from "@/components/FilterChip";
 import { ArrowIcon, CheckIcon, SearchIcon } from "@/components/Icons";
 import {
   categoryInfo,
@@ -18,25 +19,38 @@ import { genreFilters, matchesGenre } from "@/data/genres";
 // How long to wait after the last key press before searching, in milliseconds.
 const typingDelay = 400;
 
+// What the search box matches: titles, or the people and companies who made things
+// (authors, directors, show creators, and game studios).
+export type SearchBy = "title" | "creator";
+
 type SearchViewProps = {
   items: EntertainmentItem[]; // search results, or every item when not searching
   query: string; // what was searched for ("" when browsing)
+  by: SearchBy;
 };
 
-export default function SearchView({ items, query }: SearchViewProps) {
+export default function SearchView({ items, query, by }: SearchViewProps) {
   const router = useRouter();
   const [text, setText] = useState(query);
+  const [searchBy, setSearchBy] = useState(by);
   const [isSearching, startSearching] = useTransition();
   // Empty lists mean "All": no media type or genre filter.
   const [types, setTypes] = useState<Category[]>([]);
   const [genres, setGenres] = useState<string[]>([]);
 
-  // Puts the search in the address (e.g. /search?q=dune), which makes the server load
-  // new results. The address can then be bookmarked or shared.
-  function search(value: string) {
-    const trimmed = value.trim();
-    const href = trimmed ? `/search?q=${encodeURIComponent(trimmed)}` : "/search";
+  // Puts the search in the address (e.g. /search?q=nolan&by=creator), which makes the
+  // server load new results. The address can then be bookmarked or shared.
+  function search(value: string, matching: SearchBy = searchBy) {
+    const params = new URLSearchParams();
+    if (value.trim()) params.set("q", value.trim());
+    if (matching === "creator") params.set("by", "creator");
+    const href = params.size > 0 ? `/search?${params}` : "/search";
     startSearching(() => router.replace(href, { scroll: false }));
+  }
+
+  function changeSearchBy(matching: SearchBy) {
+    setSearchBy(matching);
+    search(text, matching);
   }
 
   // Search a moment after the visitor stops typing, rather than on every key press.
@@ -85,10 +99,24 @@ export default function SearchView({ items, query }: SearchViewProps) {
             type="search"
             value={text}
             onChange={(event) => setText(event.target.value)}
-            placeholder="Search movies, shows, books, and games"
+            placeholder={
+              searchBy === "creator"
+                ? "Search by author, director, show creator, or game studio"
+                : "Search movies, shows, books, and games"
+            }
             className="w-full bg-transparent text-lg text-navy outline-none placeholder:text-muted sm:text-xl"
           />
         </label>
+
+        <div role="group" aria-label="Search by" className="mt-5 flex flex-wrap items-center justify-center gap-2.5">
+          <span className="mr-1 text-sm text-navy-soft">Search by</span>
+          <FilterChip active={searchBy === "title"} onClick={() => changeSearchBy("title")}>
+            Title
+          </FilterChip>
+          <FilterChip active={searchBy === "creator"} onClick={() => changeSearchBy("creator")}>
+            Author, director, or studio
+          </FilterChip>
+        </div>
       </form>
 
       <div className="grid gap-12 lg:grid-cols-[240px_1fr] lg:gap-[clamp(48px,6vw,104px)]">
@@ -137,10 +165,10 @@ export default function SearchView({ items, query }: SearchViewProps) {
           <div className="mb-14 flex flex-wrap items-end justify-between gap-4">
             <div>
               <p className="mb-3 text-[11px] font-semibold tracking-[0.17em] text-periwinkle">
-                {query ? "SEARCH RESULTS" : "BROWSE ALL"}
+                {!query ? "BROWSE ALL" : by === "creator" ? "MADE BY" : "SEARCH RESULTS"}
               </p>
               <h2 className="text-[clamp(36px,4.5vw,56px)] leading-none tracking-tight">
-                {query ? `Results for “${query}”` : "Explore something new"}
+                {!query ? "Explore something new" : by === "creator" ? `Works by “${query}”` : `Results for “${query}”`}
               </h2>
             </div>
             <p className="text-[15px] text-navy-soft">

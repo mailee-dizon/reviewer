@@ -1,14 +1,16 @@
--- REWIND database setup for the review flow.
+-- REWIND database setup for reviews and saved items.
 -- Paste this whole file into Supabase → SQL Editor → New query, and click Run.
 -- It's safe to run more than once.
 --
--- It does four things:
+-- It does five things:
 --   1. Creates a profile automatically when someone signs up.
 --   2. Fills in dates automatically and keeps reviews.updated_at current.
 --   3. Adds a few rules: one review per person per title, ratings 1 to 5,
 --      and one media row per title.
 --   4. Turns on Row Level Security, so people can only change their own data,
 --      and private reviews are only visible to the person who wrote them.
+--   5. Sets up saved_items: which list each saved title is in, and keeps
+--      everyone's saved lists private.
 
 
 -- ---------------------------------------------------------------------------
@@ -147,4 +149,68 @@ create policy "People can add their own helpful votes"
 drop policy if exists "People can remove their own helpful votes" on public.review_likes;
 create policy "People can remove their own helpful votes"
   on public.review_likes for delete to authenticated
+  using ((select auth.uid()) = user_id);
+
+
+-- ---------------------------------------------------------------------------
+-- 5. Saved items: each person's "currently watching", "watched", and
+--    "want to watch" lists (or reading/read, playing/played)
+-- ---------------------------------------------------------------------------
+
+-- Which list the title is in: 'current' (watching, reading, playing),
+-- 'finished' (watched, read, played), or 'want' (want to watch, read, play).
+alter table public.saved_items add column if not exists status text not null default 'want';
+alter table public.saved_items drop constraint if exists saved_items_status_check;
+alter table public.saved_items
+  add constraint saved_items_status_check check (status in ('current', 'finished', 'want'));
+
+alter table public.saved_items alter column saved_at set default now();
+
+-- The title's genres (e.g. {"Drama", "Science Fiction"}), so the Saved page can filter
+-- by genre. Kept here rather than on media because people can update their own saved
+-- items, and the genres are filled in every time something is saved or moved.
+alter table public.saved_items add column if not exists genres text[] not null default '{}';
+
+-- Each person saves a title once; saving it again moves it to another list.
+create unique index if not exists saved_items_user_media_key
+  on public.saved_items (user_id, media_id);
+
+-- Link saved items to their titles, so the site can load both in one request.
+-- (Only added if the table doesn't link them already.)
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint
+    where conrelid = 'public.saved_items'::regclass
+      and contype = 'f'
+      and confrelid = 'public.media'::regclass
+  ) then
+    alter table public.saved_items
+      add constraint saved_items_media_id_fkey
+      foreign key (media_id) references public.media (id) on delete cascade;
+  end if;
+end;
+$$;
+
+-- Saved lists are private: people can only see and change their own.
+alter table public.saved_items enable row level security;
+
+drop policy if exists "People can see their own saved items" on public.saved_items;
+create policy "People can see their own saved items"
+  on public.saved_items for select to authenticated
+  using ((select auth.uid()) = user_id);
+
+drop policy if exists "People can save items" on public.saved_items;
+create policy "People can save items"
+  on public.saved_items for insert to authenticated
+  with check ((select auth.uid()) = user_id);
+
+drop policy if exists "People can move their own saved items" on public.saved_items;
+create policy "People can move their own saved items"
+  on public.saved_items for update to authenticated
+  using ((select auth.uid()) = user_id) with check ((select auth.uid()) = user_id);
+
+drop policy if exists "People can remove their own saved items" on public.saved_items;
+create policy "People can remove their own saved items"
+  on public.saved_items for delete to authenticated
   using ((select auth.uid()) = user_id);

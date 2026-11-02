@@ -45,6 +45,7 @@ type TmdbTitle = {
   overview?: string;
   poster_path?: string | null;
   vote_average?: number; // out of 10
+  popularity?: number; // how popular it is on TMDB right now; higher is more popular
   genre_ids?: number[]; // lists give genre numbers; see genreNames below
 
   // These only come with the full details of one title, not in lists.
@@ -195,6 +196,51 @@ export async function searchMovies(query: string): Promise<EntertainmentItem[]> 
 // Searches for shows by title, e.g. "the bear".
 export async function searchShows(query: string): Promise<EntertainmentItem[]> {
   return search("tv", query);
+}
+
+// One credit from a person's filmography, e.g. a movie they directed.
+// It has the same details as a movie or show in a list, plus the person's role.
+type TmdbCredit = TmdbTitle & {
+  media_type: "movie" | "tv";
+  job: string; // e.g. "Director", "Creator", "Writer"
+};
+
+// The roles that count as making a title: directing a movie, or creating a show.
+function isCreatorCredit(credit: TmdbCredit): boolean {
+  return (
+    (credit.media_type === "movie" && credit.job === "Director") ||
+    (credit.media_type === "tv" && credit.job === "Creator")
+  );
+}
+
+// Finds the movies directed by, and shows created by, the person whose name matches,
+// e.g. "christopher nolan" or "phoebe waller-bridge". Most popular first.
+export async function searchByCreator(
+  query: string,
+): Promise<{ movies: EntertainmentItem[]; shows: EntertainmentItem[] }> {
+  const people = await askTmdb<{ results: { id: number }[] }>(
+    "search/person",
+    `&query=${encodeURIComponent(query)}`,
+  );
+
+  // Several people can share a name, and some directors are listed as actors, so we
+  // check the top few matches and use whoever directed or created the most.
+  const candidates = (people?.results ?? []).slice(0, 3);
+  const filmographies = await Promise.all(
+    candidates.map(async (person) => {
+      const credits = await askTmdb<{ crew: TmdbCredit[] }>(`person/${person.id}/combined_credits`);
+      return (credits?.crew ?? []).filter(isCreatorCredit);
+    }),
+  );
+  const made = filmographies.reduce((best, credits) => (credits.length > best.length ? credits : best), []);
+  if (made.length === 0) return { movies: [], shows: [] };
+
+  const [movieGenres, showGenres] = await Promise.all([getGenreTable("movie"), getGenreTable("tv")]);
+  const byPopularity = [...made].sort((a, b) => (b.popularity ?? 0) - (a.popularity ?? 0));
+  return {
+    movies: toItems(byPopularity.filter((credit) => credit.media_type === "movie"), "movie", movieGenres),
+    shows: toItems(byPopularity.filter((credit) => credit.media_type === "tv"), "tv", showGenres),
+  };
 }
 
 // Checks whether a slug is one of our movie or show addresses, e.g. "movie-693134".
