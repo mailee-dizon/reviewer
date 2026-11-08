@@ -1,16 +1,17 @@
--- REWIND database setup for reviews and saved items.
+-- REWIND database setup for reviews, saved items, and following people.
 -- Paste this whole file into Supabase → SQL Editor → New query, and click Run.
 -- It's safe to run more than once.
 --
--- It does five things:
+-- It does six things:
 --   1. Creates a profile automatically when someone signs up.
 --   2. Fills in dates automatically and keeps reviews.updated_at current.
 --   3. Adds a few rules: one review per person per title, ratings 1 to 5,
 --      and one media row per title.
 --   4. Turns on Row Level Security, so people can only change their own data,
 --      and private reviews are only visible to the person who wrote them.
---   5. Sets up saved_items: which list each saved title is in, and keeps
---      everyone's saved lists private.
+--   5. Sets up saved_items: which list each saved title is in.
+--   6. Lets people follow each other and see each other's saved lists
+--      (unless they turn that off in their account settings).
 
 
 -- ---------------------------------------------------------------------------
@@ -192,13 +193,10 @@ begin
 end;
 $$;
 
--- Saved lists are private: people can only see and change their own.
+-- People can only change their own saved items. (Who can see them is in section 6.)
 alter table public.saved_items enable row level security;
 
 drop policy if exists "People can see their own saved items" on public.saved_items;
-create policy "People can see their own saved items"
-  on public.saved_items for select to authenticated
-  using ((select auth.uid()) = user_id);
 
 drop policy if exists "People can save items" on public.saved_items;
 create policy "People can save items"
@@ -214,3 +212,58 @@ drop policy if exists "People can remove their own saved items" on public.saved_
 create policy "People can remove their own saved items"
   on public.saved_items for delete to authenticated
   using ((select auth.uid()) = user_id);
+
+
+-- ---------------------------------------------------------------------------
+-- 6. Following people, and seeing their saved lists
+-- ---------------------------------------------------------------------------
+
+-- Each username belongs to one person (capitals don't count), since profile
+-- addresses use it, e.g. /u/justin.
+create unique index if not exists profiles_username_key
+  on public.profiles (lower(username));
+
+-- Whether other people can see this person's saved lists. On unless they turn it off.
+alter table public.profiles add column if not exists lists_public boolean not null default true;
+
+-- Who follows whom. "follower_id follows following_id".
+create table if not exists public.follows (
+  follower_id  uuid not null references public.profiles (id) on delete cascade,
+  following_id uuid not null references public.profiles (id) on delete cascade,
+  created_at   timestamptz not null default now(),
+  primary key (follower_id, following_id),
+  constraint follows_not_yourself check (follower_id <> following_id)
+);
+
+-- Speeds up "who follows this person?" (the primary key already covers the other way).
+create index if not exists follows_following_id_idx on public.follows (following_id);
+
+alter table public.follows enable row level security;
+
+-- Anyone can see who follows whom; people can only follow and unfollow as themselves.
+drop policy if exists "Follows are visible to everyone" on public.follows;
+create policy "Follows are visible to everyone"
+  on public.follows for select using (true);
+
+drop policy if exists "People can follow others" on public.follows;
+create policy "People can follow others"
+  on public.follows for insert to authenticated
+  with check ((select auth.uid()) = follower_id);
+
+drop policy if exists "People can unfollow others" on public.follows;
+create policy "People can unfollow others"
+  on public.follows for delete to authenticated
+  using ((select auth.uid()) = follower_id);
+
+-- Saved lists: people always see their own, and everyone can see the lists of
+-- people who keep them public.
+drop policy if exists "Saved items are visible to their owner, or everyone if public" on public.saved_items;
+create policy "Saved items are visible to their owner, or everyone if public"
+  on public.saved_items for select
+  using (
+    (select auth.uid()) = user_id
+    or exists (
+      select 1 from public.profiles
+      where profiles.id = saved_items.user_id and profiles.lists_public
+    )
+  );

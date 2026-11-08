@@ -82,7 +82,7 @@ function watchSignIn() {
   });
 }
 
-// The shape the database sends back for the query in loadLibrary.
+// The shape the database sends back for the query in loadSavedEntries.
 type SavedRow = {
   status: SavedStatus;
   saved_at: string;
@@ -98,18 +98,17 @@ type SavedRow = {
   } | null;
 };
 
-// Loads the user's saved items, with each title's details from the "media" table.
-async function loadLibrary(userId: string) {
-  update({ userId, loading: true, error: "", entries: {} });
+// Loads anyone's saved items, by slug, with each title's details from the "media" table.
+// Used for the signed-in user's own library and for other people's profiles. The database
+// only sends someone else's items if they keep their lists public.
+// Throws an Error if the database says no.
+export async function loadSavedEntries(userId: string): Promise<Record<string, SavedEntry>> {
   const { data, error } = await supabase
     .from("saved_items")
     .select("status, saved_at, genres, media(media_type, title, description, release_year, creator, cover_url, external_id)")
     .eq("user_id", userId)
     .overrideTypes<SavedRow[], { merge: false }>();
-
-  // Ignore the answer if someone else signed in while we were waiting.
-  if (library.userId !== userId) return;
-  if (error) return update({ loading: false, error: error.message });
+  if (error) throw new Error(error.message);
 
   const entries: Record<string, SavedEntry> = {};
   for (const row of data) {
@@ -127,7 +126,19 @@ async function loadLibrary(userId: string) {
     };
     entries[item.slug] = { item, status: row.status, savedAt: row.saved_at };
   }
-  update({ loading: false, entries });
+  return entries;
+}
+
+// Loads the signed-in user's library.
+async function loadLibrary(userId: string) {
+  update({ userId, loading: true, error: "", entries: {} });
+  try {
+    const entries = await loadSavedEntries(userId);
+    // Ignore the answer if someone else signed in while we were waiting.
+    if (library.userId === userId) update({ loading: false, entries });
+  } catch (error) {
+    if (library.userId === userId) update({ loading: false, error: (error as Error).message });
+  }
 }
 
 // A React hook that returns the signed-in user's library, and re-draws when it changes.

@@ -5,6 +5,9 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useEffect, useRef, useState } from "react";
+import Avatar from "@/components/Avatar";
+import { getProfile, nameOf, profileHref, type Profile } from "@/lib/people";
 import { supabase, useUser } from "@/lib/supabase";
 
 // The links shown in the navigation bar, in order.
@@ -61,7 +64,7 @@ export default function Navbar() {
   );
 }
 
-// "Sign in" for visitors, "Sign out" for signed-in users.
+// "Sign in" for visitors. Signed-in users get their initials badge, which opens the account menu.
 function AccountLink() {
   const { user, loading } = useUser();
   const pathname = usePathname();
@@ -81,9 +84,94 @@ function AccountLink() {
     );
   }
 
+  return <AccountMenu userId={user.id} />;
+}
+
+// The menu under the initials badge: your profile, saved lists, finding people,
+// account settings, and signing out.
+function AccountMenu({ userId }: { userId: string }) {
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [isOpen, setIsOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
+
+  // Load the name for the badge. (It updates on the next page load after changing it.)
+  useEffect(() => {
+    getProfile(userId)
+      .then(setProfile)
+      .catch(() => setProfile(null));
+  }, [userId]);
+
+  // Close the menu when clicking elsewhere or pressing Escape.
+  useEffect(() => {
+    if (!isOpen) return;
+    function closeOnOutsideClick(event: MouseEvent) {
+      if (!menuRef.current?.contains(event.target as Node)) setIsOpen(false);
+    }
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsOpen(false);
+    }
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    document.addEventListener("keydown", closeOnEscape);
+    return () => {
+      document.removeEventListener("mousedown", closeOnOutsideClick);
+      document.removeEventListener("keydown", closeOnEscape);
+    };
+  }, [isOpen]);
+
+  // Until the profile loads, show a plain badge.
+  const shown: Profile = profile ?? { id: userId, username: null, displayName: "·", listsPublic: true };
+  const itemStyles = "block w-full px-5 py-2.5 text-left text-[15px] text-navy transition hover:bg-lavender-soft";
+
   return (
-    <button type="button" onClick={() => supabase.auth.signOut()} className={styles}>
-      Sign out
-    </button>
+    <div ref={menuRef} className="relative">
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        aria-haspopup="menu"
+        aria-expanded={isOpen}
+        aria-label="Your account"
+        className="rounded-full transition hover:opacity-85 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-periwinkle"
+      >
+        <Avatar profile={shown} size={42} />
+      </button>
+
+      {isOpen && (
+        // Choosing an item closes the menu.
+        <div
+          role="menu"
+          onClick={() => setIsOpen(false)}
+          className="absolute right-0 top-full z-30 mt-2 w-56 overflow-hidden rounded-2xl border border-line bg-paper py-2 shadow-[0_16px_40px_rgba(23,35,61,0.16)]"
+        >
+          {profile && (
+            <div className="mb-1 border-b border-line px-5 pb-3 pt-1">
+              <p className="truncate font-serif text-lg leading-tight">{nameOf(profile)}</p>
+              {profile.username && <p className="truncate text-sm text-muted">@{profile.username}</p>}
+            </div>
+          )}
+          {profile && (
+            <Link href={profileHref(profile)} role="menuitem" className={itemStyles}>
+              Your profile
+            </Link>
+          )}
+          <Link href="/saved" role="menuitem" className={itemStyles}>
+            Saved
+          </Link>
+          <Link href="/people" role="menuitem" className={itemStyles}>
+            Find people
+          </Link>
+          <Link href="/account" role="menuitem" className={itemStyles}>
+            Account settings
+          </Link>
+          <button
+            type="button"
+            role="menuitem"
+            onClick={() => supabase.auth.signOut()}
+            className={`${itemStyles} mt-1 border-t border-line pt-3 text-periwinkle`}
+          >
+            Sign out
+          </button>
+        </div>
+      )}
+    </div>
   );
 }

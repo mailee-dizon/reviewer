@@ -10,6 +10,7 @@ export type Review = {
   id: number;
   userId: string;
   authorName: string;
+  authorUsername: string | null; // for the link to their profile
   rating: number; // 1 to 5 stars
   body: string; // can be empty: a rating on its own is fine
   isPublic: boolean; // false means only the author can see it
@@ -92,6 +93,7 @@ export async function getReviews(mediaId: number): Promise<Review[]> {
     id: row.id,
     userId: row.user_id,
     authorName: row.author?.display_name || row.author?.username || "REWIND member",
+    authorUsername: row.author?.username ?? null,
     rating: row.rating,
     body: row.body ?? "",
     isPublic: row.public,

@@ -7,6 +7,7 @@ import { useEffect, useState } from "react";
 import FilterChip from "@/components/FilterChip";
 import { ArrowUpIcon, CheckIcon, LockIcon, StarIcon } from "@/components/Icons";
 import type { EntertainmentItem } from "@/data/entertainment";
+import { profileHref } from "@/lib/people";
 import {
   deleteReview,
   findMediaId,
@@ -254,6 +255,7 @@ function ReviewCard({
   onEdit,
   onDelete,
 }: ReviewCardProps) {
+  const authorHref = profileHref({ id: review.userId, username: review.authorUsername });
   const postedDate = new Date(review.createdAt).toLocaleDateString("en-US", {
     month: "long",
     day: "numeric",
@@ -263,12 +265,20 @@ function ReviewCard({
   return (
     <article className="border-b border-line py-10 first:pt-0">
       <div className="mb-6 flex items-center gap-4">
-        <span className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-lavender text-[15px] font-semibold">
+        {/* The badge and name link to the reviewer's profile. */}
+        <Link
+          href={authorHref}
+          aria-hidden="true"
+          tabIndex={-1}
+          className="flex h-14 w-14 flex-none items-center justify-center rounded-full bg-lavender text-[15px] font-semibold transition hover:bg-periwinkle hover:text-cream"
+        >
           {initials(review.authorName)}
-        </span>
+        </Link>
         <div>
           <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-lg font-medium">
-            {review.authorName}
+            <Link href={authorHref} className="underline-offset-4 transition hover:text-periwinkle hover:underline">
+              {review.authorName}
+            </Link>
             {isMine && <span className="text-sm font-normal text-muted">(you)</span>}
             {!review.isPublic && (
               <span className="flex items-center gap-1 rounded-full bg-lavender-soft px-2.5 py-1 text-xs font-medium text-navy-soft">
