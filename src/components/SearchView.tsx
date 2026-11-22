@@ -37,6 +37,8 @@ export default function SearchView({ items, query, by }: SearchViewProps) {
   // Empty lists mean "All": no media type or genre filter.
   const [types, setTypes] = useState<Category[]>([]);
   const [genres, setGenres] = useState<string[]>([]);
+  // On small screens the filters are hidden behind a "Filters" button.
+  const [areFiltersOpen, setAreFiltersOpen] = useState(false);
 
   // Puts the search in the address (e.g. /search?q=nolan&by=creator), which makes the
   // server load new results. The address can then be bookmarked or shared.
@@ -66,6 +68,7 @@ export default function SearchView({ items, query, by }: SearchViewProps) {
   }
 
   const selectedGenres = genreFilters.filter((filter) => genres.includes(filter.label));
+  const filterCount = types.length + selectedGenres.length;
   const shownTypes = types.length > 0 ? homeCategories.filter((type) => types.includes(type)) : homeCategories;
 
   // One section per media type, each holding the items that pass the genre filters.
@@ -88,9 +91,9 @@ export default function SearchView({ items, query, by }: SearchViewProps) {
           event.preventDefault();
           search(text);
         }}
-        className="mx-auto mb-20 max-w-[1060px]"
+        className="mx-auto mb-12 max-w-[1060px] sm:mb-20"
       >
-        <label className="flex items-center gap-4 rounded-[20px] border border-periwinkle bg-paper px-6 py-5 shadow-[0_18px_40px_rgba(23,35,61,0.08)] transition focus-within:shadow-[0_18px_40px_rgba(119,118,169,0.22)] sm:px-7 sm:py-6">
+        <label className="flex items-center gap-3 rounded-[20px] border border-periwinkle bg-paper px-5 py-4 shadow-[0_18px_40px_rgba(23,35,61,0.08)] transition focus-within:shadow-[0_18px_40px_rgba(119,118,169,0.22)] sm:gap-4 sm:px-7 sm:py-6">
           <span className="text-periwinkle">
             <SearchIcon size={24} />
           </span>
@@ -99,12 +102,8 @@ export default function SearchView({ items, query, by }: SearchViewProps) {
             type="search"
             value={text}
             onChange={(event) => setText(event.target.value)}
-            placeholder={
-              searchBy === "creator"
-                ? "Search by author, director, show creator, or game studio"
-                : "Search movies, shows, books, and games"
-            }
-            className="w-full bg-transparent text-lg text-navy outline-none placeholder:text-muted sm:text-xl"
+            placeholder={searchBy === "creator" ? "Author, director, or studio" : "Movies, shows, books, and games"}
+            className="w-full min-w-0 bg-transparent text-base text-navy outline-none placeholder:text-muted sm:text-xl"
           />
         </label>
 
@@ -119,45 +118,62 @@ export default function SearchView({ items, query, by }: SearchViewProps) {
         </div>
       </form>
 
-      <div className="grid gap-12 lg:grid-cols-[240px_1fr] lg:gap-[clamp(48px,6vw,104px)]">
-        {/* Filters. On wide screens they stay in view and scroll on their own. */}
+      <div className="grid gap-10 lg:grid-cols-[240px_1fr] lg:gap-[clamp(48px,6vw,104px)]">
+        {/* Filters. On wide screens they stay in view and scroll on their own.
+            On small screens they're hidden until the "Filters" button is tapped. */}
         <aside className="lg:sticky lg:top-28 lg:max-h-[calc(100vh-8rem)] lg:self-start lg:overflow-y-auto lg:pr-2">
-          <div className="mb-8 flex items-baseline justify-between border-b border-line pb-6">
-            <h2 className="text-[34px] leading-none">Filters</h2>
+          <div className="flex items-center justify-between gap-4 lg:mb-8 lg:items-baseline lg:border-b lg:border-line lg:pb-6">
+            <h2 className="hidden text-[34px] leading-none lg:block">Filters</h2>
+            <button
+              type="button"
+              onClick={() => setAreFiltersOpen(!areFiltersOpen)}
+              aria-expanded={areFiltersOpen}
+              aria-controls="search-filters"
+              className="inline-flex items-center gap-2 rounded-full border border-periwinkle px-5 py-2.5 text-[15px] text-navy transition hover:bg-lavender-soft lg:hidden"
+            >
+              {areFiltersOpen ? "Hide filters" : "Filters"}
+              {filterCount > 0 && (
+                <span className="rounded-full bg-lavender px-2 py-0.5 text-xs font-semibold">{filterCount}</span>
+              )}
+            </button>
             <button
               type="button"
               onClick={() => {
                 setTypes([]);
                 setGenres([]);
               }}
-              className="text-[15px] text-periwinkle transition hover:text-navy"
+              className={`text-[15px] text-periwinkle transition hover:text-navy ${
+                filterCount > 0 || areFiltersOpen ? "" : "hidden lg:inline"
+              }`}
             >
               Reset
             </button>
           </div>
 
-          <FilterGroup title="MEDIA TYPE">
-            <Checkbox label="All" checked={types.length === 0} onChange={() => setTypes([])} />
-            {homeCategories.map((category) => (
-              <Checkbox
-                key={category}
-                label={categoryInfo[category].label}
-                checked={types.includes(category)}
-                onChange={() => setTypes(toggle(types, category))}
-              />
-            ))}
-          </FilterGroup>
+          <div id="search-filters" className={`${areFiltersOpen ? "mt-8 block" : "hidden"} lg:mt-0 lg:block`}>
+            <FilterGroup title="MEDIA TYPE">
+              <Checkbox label="All" checked={types.length === 0} onChange={() => setTypes([])} />
+              {homeCategories.map((category) => (
+                <Checkbox
+                  key={category}
+                  label={categoryInfo[category].label}
+                  checked={types.includes(category)}
+                  onChange={() => setTypes(toggle(types, category))}
+                />
+              ))}
+            </FilterGroup>
 
-          <FilterGroup title="GENRE">
-            {genreFilters.map((filter) => (
-              <Checkbox
-                key={filter.label}
-                label={filter.label}
-                checked={genres.includes(filter.label)}
-                onChange={() => setGenres(toggle(genres, filter.label))}
-              />
-            ))}
-          </FilterGroup>
+            <FilterGroup title="GENRE">
+              {genreFilters.map((filter) => (
+                <Checkbox
+                  key={filter.label}
+                  label={filter.label}
+                  checked={genres.includes(filter.label)}
+                  onChange={() => setGenres(toggle(genres, filter.label))}
+                />
+              ))}
+            </FilterGroup>
+          </div>
         </aside>
 
         {/* Results */}

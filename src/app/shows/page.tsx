@@ -18,7 +18,8 @@ export default async function ShowsPage() {
           Shows couldn&apos;t be loaded right now. Please try again later.
         </p>
       ) : (
-        <div className="grid grid-cols-[repeat(auto-fill,minmax(170px,1fr))] gap-x-[22px] gap-y-10">
+        <div className="grid grid-cols-2 gap-x-4 gap-y-8 sm:grid-cols-[repeat(auto-fill,minmax(170px,1fr))] sm:gap-x-[22px] sm:gap-y-10">
+          {/* Two cards per row on phones; on wider screens, as many as fit. */}
           {shows.map((show) => (
             <EntertainmentCard key={show.slug} item={show} />
           ))}

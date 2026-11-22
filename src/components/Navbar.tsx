@@ -1,12 +1,14 @@
 // "use client" is needed because this component uses usePathname(),
 // which reads the current web address in the browser so we can
-// highlight the link for the page the user is on.
+// highlight the link for the page the user is on, and because the
+// menu on small screens opens and closes.
 "use client";
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import Avatar from "@/components/Avatar";
+import { CloseIcon, MenuIcon } from "@/components/Icons";
 import { getProfile, nameOf, profileHref, type Profile } from "@/lib/people";
 import { supabase, useUser } from "@/lib/supabase";
 
@@ -26,27 +28,40 @@ export default function Navbar() {
   const pathname = usePathname();
   const { user } = useUser();
   const shownLinks = navLinks.filter((link) => !link.signedInOnly || user);
+  // On small screens the links are in a menu that opens below the bar.
+  const [isMenuOpen, setIsMenuOpen] = useState(false);
+
+  // Close the menu with Escape.
+  useEffect(() => {
+    if (!isMenuOpen) return;
+    function closeOnEscape(event: KeyboardEvent) {
+      if (event.key === "Escape") setIsMenuOpen(false);
+    }
+    document.addEventListener("keydown", closeOnEscape);
+    return () => document.removeEventListener("keydown", closeOnEscape);
+  }, [isMenuOpen]);
 
   return (
     <header className="sticky top-0 z-20 border-b border-line bg-cream/95 backdrop-blur-md">
-      {/* On small screens the links wrap onto a second row that scrolls sideways. */}
-      <div className="flex flex-wrap items-center justify-between gap-y-2 px-5 py-3.5 md:grid md:h-20 md:grid-cols-[1fr_auto_1fr] md:px-[clamp(24px,5vw,76px)] md:py-0">
+      <div className="flex h-16 items-center justify-between gap-3 px-5 lg:grid lg:h-20 lg:grid-cols-[1fr_auto_1fr] lg:px-[clamp(24px,5vw,76px)]">
         {/* Logo: clicking it always returns to the Home page. */}
-        <Link href="/" className="w-fit py-1.5 font-serif text-[29px] tracking-tight text-navy">
+        <Link href="/" className="w-fit py-1.5 font-serif text-[26px] tracking-tight text-navy lg:text-[29px]">
           REWIND<span className="text-periwinkle">.</span>
         </Link>
 
-        <nav aria-label="Primary navigation" className="order-last flex w-full gap-1 overflow-x-auto md:order-none md:w-auto">
+        {/* On wide screens the links sit in the middle of the bar. */}
+        <nav aria-label="Primary navigation" className="hidden gap-1 lg:flex">
           {shownLinks.map((link) => {
             const isActive = pathname === link.href;
             return (
               <Link
                 key={link.href}
                 href={link.href}
+                aria-current={isActive ? "page" : undefined}
                 className={
                   isActive
-                    ? "whitespace-nowrap rounded-full bg-lavender px-3 py-2 text-sm font-semibold text-navy md:px-4 md:py-2.5"
-                    : "whitespace-nowrap rounded-full px-3 py-2 text-sm text-navy-soft transition hover:bg-lavender-soft hover:text-navy md:px-4 md:py-2.5"
+                    ? "whitespace-nowrap rounded-full bg-lavender px-4 py-2.5 text-sm font-semibold text-navy"
+                    : "whitespace-nowrap rounded-full px-4 py-2.5 text-sm text-navy-soft transition hover:bg-lavender-soft hover:text-navy"
                 }
               >
                 {link.label}
@@ -55,11 +70,47 @@ export default function Navbar() {
           })}
         </nav>
 
-        {/* Sign in / sign out, on the right. */}
-        <div className="flex justify-end">
+        {/* Sign in or the account badge, plus the menu button on small screens. */}
+        <div className="flex items-center justify-end gap-1">
           <AccountLink />
+          <button
+            type="button"
+            onClick={() => setIsMenuOpen(!isMenuOpen)}
+            aria-expanded={isMenuOpen}
+            aria-controls="mobile-menu"
+            aria-label={isMenuOpen ? "Close menu" : "Open menu"}
+            className="-mr-2 flex h-11 w-11 items-center justify-center rounded-full text-navy transition hover:bg-lavender-soft lg:hidden"
+          >
+            {isMenuOpen ? <CloseIcon /> : <MenuIcon />}
+          </button>
         </div>
       </div>
+
+      {/* The menu on small screens: one large, easy-to-tap row per link. Choosing one closes it. */}
+      {isMenuOpen && (
+        <nav
+          id="mobile-menu"
+          aria-label="Primary navigation"
+          onClick={() => setIsMenuOpen(false)}
+          className="border-t border-line px-3 pb-4 pt-2 lg:hidden"
+        >
+          {shownLinks.map((link) => {
+            const isActive = pathname === link.href;
+            return (
+              <Link
+                key={link.href}
+                href={link.href}
+                aria-current={isActive ? "page" : undefined}
+                className={`block rounded-xl px-4 py-3 text-[17px] transition ${
+                  isActive ? "bg-lavender font-semibold text-navy" : "text-navy-soft hover:bg-lavender-soft hover:text-navy"
+                }`}
+              >
+                {link.label}
+              </Link>
+            );
+          })}
+        </nav>
+      )}
     </header>
   );
 }

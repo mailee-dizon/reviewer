@@ -49,8 +49,8 @@ export default async function DetailPage({ params }: DetailPageProps) {
       </Link>
 
       <div className="grid items-center gap-10 md:grid-cols-[minmax(240px,420px)_1fr] md:gap-[clamp(48px,8vw,100px)]">
-        {/* Cover image */}
-        <div className="relative aspect-[4/5.35] w-full max-w-[300px] overflow-hidden rounded-[20px] bg-lavender shadow-[0_20px_50px_rgba(23,35,61,0.16)] md:max-w-none">
+        {/* Cover image: centered and a little smaller on phones, beside the details on wider screens. */}
+        <div className="relative mx-auto aspect-[4/5.35] w-full max-w-[260px] overflow-hidden rounded-[20px] bg-lavender shadow-[0_20px_50px_rgba(23,35,61,0.16)] sm:max-w-[300px] md:mx-0 md:max-w-none">
           <Image
             src={item.image}
             alt={`${item.title} cover`}

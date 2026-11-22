@@ -45,7 +45,7 @@ export default function SavedLists({ saved, emptyText }: SavedListsProps) {
 
   return (
     <>
-      <div role="tablist" aria-label="Kinds of media" className="mb-12 flex gap-1 overflow-x-auto border-b border-line">
+      <div role="tablist" aria-label="Kinds of media" className="mb-8 flex gap-0.5 overflow-x-auto border-b border-line sm:mb-12 sm:gap-1">
         {tabs.map((category) => {
           const isActive = category === tab;
           const count = entries.filter((entry) => entry.item.category === category).length;
@@ -59,7 +59,7 @@ export default function SavedLists({ saved, emptyText }: SavedListsProps) {
                 setTab(category);
                 setGenres([]); // each tab has its own genres
               }}
-              className={`-mb-px flex items-center gap-2 whitespace-nowrap border-b-2 px-4 pb-4 pt-2 text-[17px] transition ${
+              className={`-mb-px flex items-center gap-1 whitespace-nowrap border-b-2 px-2 pb-3 pt-2 text-sm transition sm:gap-2 sm:px-4 sm:pb-4 sm:text-[17px] ${
                 isActive
                   ? "border-navy font-semibold text-navy"
                   : "border-transparent text-navy-soft hover:text-navy"
@@ -67,7 +67,7 @@ export default function SavedLists({ saved, emptyText }: SavedListsProps) {
             >
               {categoryInfo[category].label}
               <span
-                className={`rounded-full px-2 py-0.5 text-xs ${
+                className={`rounded-full px-1.5 py-0.5 text-[11px] sm:px-2 sm:text-xs ${
                   isActive ? "bg-lavender text-navy" : "bg-lavender-soft text-navy-soft"
                 }`}
               >
